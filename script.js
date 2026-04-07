@@ -6,6 +6,7 @@ let modoProActivo = false;
 
 function f(n) {
     let num = Number(n);
+    if (isNaN(num)) return "0";
     return Number.isInteger(num) ? num.toString() : num.toFixed(2);
 }
 
@@ -100,16 +101,30 @@ function draw() {
         s.innerText = f(document.getElementById(id).value);
     });
 
+    // Formateo visual de la ecuación
     let bT = b === 0 ? "0" : (b === 1 ? "" : (b === -1 ? "-" : f(b)));
-    let hS = h >= 0 ? "-" : "+";
+    let hS = h > 0 ? "-" : "+";
+    let hDisplay = h === 0 ? "" : ` ${hS} ${f(Math.abs(h))}`;
     let nP = n === 0 ? "" : (n > 0 ? ` + ${f(n)}x` : ` - ${f(Math.abs(n))}x`);
     let mP = m === 0 ? "" : (m > 0 ? ` + ${f(m)}x` : ` - ${f(Math.abs(m))}x`);
     let eqK = (!modoProActivo || k === 0) ? "" : ` ${k >= 0 ? '+' : '-'} ${f(Math.abs(k))}`;
     
-    let eqTxt = `${a === 1 ? '' : (a === -1 ? '-' : f(a))}|${bT}x ${hS} ${f(Math.abs(h))}|${eqK}${nP} = ${f(e)}${mP}`;
+    let eqTxt = `${a === 1 ? '' : (a === -1 ? '-' : f(a))}|${bT}x${hDisplay}|${eqK}${nP} = ${f(e)}${mP}`;
     document.getElementById('eqActual').innerText = eqTxt;
 
-    if (b === 0) return;
+    // CLAUSULA PARA B = 0
+    if (b === 0) {
+        let aviso = "Error: 'b' no puede ser 0";
+        document.getElementById('despejeC1').innerText = aviso;
+        document.getElementById('despejeC2').innerText = aviso;
+        document.getElementById('step1').innerHTML = "⚠️ No hay incógnita x en el módulo";
+        document.getElementById('step2').innerHTML = "⚠️ No hay incógnita x en el módulo";
+        resX1 = null; resX2 = null;
+        dibujarRecta(1, 70, 0, null, `Validez Caso 1`, "#3498db", "x₁", true);
+        dibujarRecta(2, 160, 0, null, `Validez Caso 2`, "#e74c3c", "x₂", true);
+        return; 
+    }
+
     let hC = h / b;
 
     // CONDICIONES
@@ -126,6 +141,9 @@ function draw() {
         t1 += `${f(a*b)}x ${a*(-h)>=0?'+':'-'} ${f(Math.abs(a*h))}${eqK}${nP} = ${f(e)}${mP}<br>`;
         t1 += `<strong>${f(d1)}x = ${f(v1)} | x₁ = ${f(resX1)}</strong>`;
         document.getElementById('step1').innerHTML = t1;
+    } else {
+        resX1 = null; esValida1 = false;
+        document.getElementById('step1').innerHTML = `<strong>0x = ${f(v1)}</strong><br>${v1 === 0 ? "Infinitas Sol." : "Sin Solución"}`;
     }
 
     // CASO 2: DISTRIBUTIVA Y DESPEJE
@@ -138,6 +156,9 @@ function draw() {
         t2 += `${f(a*-b)}x ${a*h>=0?'+':'-'} ${f(Math.abs(a*h))}${eqK}${nP} = ${f(e)}${mP}<br>`;
         t2 += `<strong>${f(d2)}x = ${f(v2)} | x₂ = ${f(resX2)}</strong>`;
         document.getElementById('step2').innerHTML = t2;
+    } else {
+        resX2 = null; esValida2 = false;
+        document.getElementById('step2').innerHTML = `<strong>0x = ${f(v2)}</strong><br>${v2 === 0 ? "Infinitas Sol." : "Sin Solución"}`;
     }
 
     dibujarRecta(1, 70, hC, resX1, `Validez Caso 1`, "#3498db", "x₁", b > 0);
@@ -176,8 +197,8 @@ function verificar(caso) {
 function chequearSolucionFinal() {
     if (validado1 && validado2) {
         let sol = [];
-        if(esValida1) sol.push(f(resX1));
-        if(esValida2) sol.push(f(resX2));
+        if(esValida1 && resX1 !== null) sol.push(f(resX1));
+        if(esValida2 && resX2 !== null) sol.push(f(resX2));
         document.getElementById('solucion-final-text').innerText = sol.length ? `{ ${sol.join(" ; ")} }` : "∅";
         document.getElementById('conclusion-panel').style.display = 'block';
     }
@@ -191,43 +212,26 @@ function resetBotones() {
 }
 
 function compartirWhatsApp() {
-    // 1. Capturamos la ecuación principal
     let eq = document.getElementById('eqActual').innerText;
-    
-    // 2. Capturamos las condiciones (usamos innerText para que sea texto limpio)
     let cond1 = document.getElementById('despejeC1').innerText.replace(/\n/g, " | ");
     let cond2 = document.getElementById('despejeC2').innerText.replace(/\n/g, " | ");
-    
-    // 3. Capturamos los pasos del despeje
     let pasos1 = document.getElementById('step1').innerText.replace(/\n/g, " | ");
     let pasos2 = document.getElementById('step2').innerText.replace(/\n/g, " | ");
-    
-    // 4. Solución final
     let sol = document.getElementById('solucion-final-text').innerText || "No validada";
 
-    // 5. Armamos el mensaje con emojis para que quede prolijo
     let mensaje = `*Ecuación con Módulo* 📐%0A%0A`;
     mensaje += `*Original:* ${eq}%0A%0A`;
     mensaje += `🔵 *CASO 1* (Positivo)%0A- Condición: ${cond1}%0A- Pasos: ${pasos1}%0A%0A`;
     mensaje += `🔴 *CASO 2* (Negativo)%0A- Condición: ${cond2}%0A- Pasos: ${pasos2}%0A%0A`;
     mensaje += `🏆 *Solución Final:* ${sol}`;
 
-    // 6. La URL para WhatsApp
     let urlFinal = "https://api.whatsapp.com/send?text=" + mensaje;
 
-    // 7. EL DISPARADOR PARA TU BLOQUE DE LA FOTO:
     if (typeof window.AppInventor !== 'undefined') {
-        // Esto "despierta" al bloque WebViewStringChange
         window.AppInventor.setWebViewString(urlFinal);
     } else {
-        // Por si lo probás en la compu
         window.location.href = urlFinal;
     }
 }
-
-
-
-
-
 
 document.querySelectorAll('input').forEach(i => i.oninput = () => { resetBotones(); draw(); });
